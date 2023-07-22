@@ -6,7 +6,7 @@ Terraform scripts to deploy nginx container on ECS (Fargate) with Application Lo
 
 ### AWS
 
-You need an aws account and should have [AWS CLI] installed.
+You need an aws account and should have [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) installed.
 
 Also configuring credentials is required.
 
