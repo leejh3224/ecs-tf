@@ -1,3 +1,9 @@
+module "backend" {
+  source = "./modules/backend"
+
+  common_tags = module.common.common_tags
+}
+
 module "common" {
   source = "./modules/common"
 
@@ -47,11 +53,11 @@ module "loadbalancer" {
 module "network" {
   source = "./modules/network"
 
-  common_tags     = module.common.common_tags
-  cidr_vpc        = module.common.cidr_vpc
-  cidr_anywhere   = module.common.cidr_anywhere
-  cidr_public_one = module.common.cidr_public_one
-  cidr_public_two = module.common.cidr_public_two
+  common_tags          = module.common.common_tags
+  cidr_vpc             = module.common.cidr_vpc
+  cidr_anywhere        = module.common.cidr_anywhere
+  cidr_public_one      = module.common.cidr_public_one
+  cidr_public_two      = module.common.cidr_public_two
   az_subnet_public_one = "${var.aws_region}a"
   az_subnet_public_two = "${var.aws_region}c"
 }
