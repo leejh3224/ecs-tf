@@ -1,6 +1,7 @@
 locals {
-  alb_name              = "${local.resource_prefix}-alb"
-  alb_target_group_name = "${local.resource_prefix}-alb-tg"
+  alb_name              = "${var.resource_prefix}-alb"
+  alb_listener_name     = "${var.resource_prefix}-alb-listener"
+  alb_target_group_name = "${var.resource_prefix}-alb-tg"
 }
 
 resource "aws_lb" "ecs_tf" {
@@ -8,10 +9,10 @@ resource "aws_lb" "ecs_tf" {
   internal           = false
   load_balancer_type = "application"
   ip_address_type    = "ipv4"
-  security_groups    = [aws_security_group.ecs_tf_alb.id]
-  subnets            = data.aws_subnets.public.ids
+  security_groups    = [var.sg_alb_id]
+  subnets            = var.public_subnet_ids
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     "name" = local.alb_name,
   })
 }
@@ -25,6 +26,10 @@ resource "aws_lb_listener" "ecs_tf" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.ecs_tf.arn
   }
+
+  tags = merge(var.common_tags, {
+    "name" = local.alb_listener_name,
+  })
 }
 
 resource "aws_lb_target_group" "ecs_tf" {
@@ -32,7 +37,7 @@ resource "aws_lb_target_group" "ecs_tf" {
   port        = 80
   protocol    = "HTTP"
   target_type = "ip"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = var.vpc_main_id
 
   health_check {
     path                = "/"
@@ -44,7 +49,7 @@ resource "aws_lb_target_group" "ecs_tf" {
     interval            = 30
   }
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     "name" = local.alb_target_group_name,
   })
 }

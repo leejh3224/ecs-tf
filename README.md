@@ -30,14 +30,31 @@ Rename it with `dev.tfvars` and replace dummy values embraced with brackets and 
 $ terraform plan -var-file="tfvars/dev.tfvars"
 ```
 
-It would display changed resources.
+It would display new resources.
 
-If it looks OK, run command below to create new resources.
+The problem is nginx image needs to be pushed after creating ECR repository.
+
+Below is a workaround for this.
+
+```
+# Create new ECR repository only
+$ terraform apply -var-file="tfvars/dev.tfvars" -target="module.ecr"
+
+# Fill out outputs required for `push-image.sh` to run
+$ terraform apply -var-file="tfvars/dev.tfvars" -refresh-only
+
+# Build/push docker image
+$ scripts/push-image.sh
+```
+
+It will only create ECR repository and fill out outputs required for `scripts/push-image.sh` so that we can safely push images to it.
+
+Now that we have ECR repository and docker image set up, it's time to apply other changes too.
 
 ```
 $ terraform apply -var-file="tfvars/dev.tfvars"
 ===
-Apply complete! Resources: 17 added, 0 changed, 0 destroyed.
+Apply complete! Resources: 16 added, 0 changed, 0 destroyed.
 
 Outputs:
 
@@ -52,18 +69,10 @@ Now we have all of the infrastructure up and running.
 
 Don't forget to save `app_url` output somewhere.
 
-Next, run `scripts/push-image.sh` to build and push a nginx image.
-
-Boom! check ECS task and if it's up and running, visit `app_url` to verify.
+Boom! visit `app_url` to see if our server is working correctly.
 
 ## Clean up
 
 ```
 terraform apply -destroy -var-file="tfvars/dev.tfvars"
-```
-
-You'll face an error below, in order to resolve it, manually remove all images from ECR and run the command above again.
-
-```
-Error: ECR Repository (<ecr>) not empty, consider using force_delete: RepositoryNotEmptyException: The repository with name '<ecr>' in registry with id '<account_id>' cannot be deleted because it still contains images
 ```

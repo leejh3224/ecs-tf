@@ -1,5 +1,6 @@
 locals {
-  repository_name = "${local.resource_prefix}-ecr"
+  repository_name = "${var.resource_prefix}-ecr"
+  aws_ecr_url = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com"
 }
 
 resource "aws_ecr_repository" "ecs_tf" {
@@ -8,7 +9,12 @@ resource "aws_ecr_repository" "ecs_tf" {
   image_scanning_configuration {
     scan_on_push = true
   }
-  tags = merge(local.common_tags, {
+
+  # Caveat: don't use this in production
+  # To delete non empty repository for demonstration purposes
+  force_delete = true
+
+  tags = merge(var.common_tags, {
     "name" = local.repository_name,
   })
 }

@@ -1,99 +1,66 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.9"
-    }
-  }
+module "common" {
+  source = "./modules/common"
 
-  required_version = ">= 1.5.2"
+  organization = var.organization
+  environment  = var.environment
+  project      = var.project
+  owner        = var.owner
 }
 
-provider "aws" {
-  profile = var.aws_profile
-  region  = var.aws_region
+module "ecr" {
+  source = "./modules/ecr"
+
+  common_tags     = module.common.common_tags
+  resource_prefix = module.common.resource_prefix
+  aws_account_id  = module.common.aws_account_id
+  aws_region      = var.aws_region
 }
 
-# variables
-locals {
-  # common tags for all resources
-  common_tags = {
-    "org"        = var.organization
-    "enviroment" = var.environment
-    "project"    = var.project
-    "owner"      = var.owner
-  }
+module "ecs" {
+  source = "./modules/ecs"
 
-  resource_prefix = "${var.environment}-${var.project}"
-
-  # utils
-  aws_account_id         = data.aws_caller_identity.current.account_id
-  aws_ecr_url            = "${local.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com"
-  aws_ecr_repository_url = "${local.aws_ecr_url}/${local.repository_name}"
-
-  cidr_anywhere   = "0.0.0.0/0"
-  cidr_vpc        = "10.0.0.0/16"
-  cidr_public_one = "10.0.1.0/24"
-  cidr_public_two = "10.0.2.0/24"
+  common_tags                 = module.common.common_tags
+  resource_prefix             = module.common.resource_prefix
+  aws_region                  = var.aws_region
+  container_name              = var.project
+  public_subnet_ids           = module.network.public_subnet_ids
+  sg_ecs_service_id           = module.security.sg_ecs_service_id
+  ecs_task_execution_role_arn = module.iam.ecs_task_execution_role_arn
+  aws_ecr_repository_url      = module.ecr.aws_ecr_repository_url
+  alb_target_group_arn        = module.loadbalancer.alb_target_group_arn
 }
 
-variable "project" {
-  description = "Project name"
-  type        = string
-  nullable    = false
+module "iam" {
+  source = "./modules/iam"
 }
 
-variable "organization" {
-  description = "Organization name"
-  type        = string
-  nullable    = false
+module "loadbalancer" {
+  source = "./modules/loadbalancer"
+
+  common_tags       = module.common.common_tags
+  resource_prefix   = module.common.resource_prefix
+  sg_alb_id         = module.security.sg_alb_id
+  public_subnet_ids = module.network.public_subnet_ids
+  vpc_main_id       = module.network.vpc_main_id
 }
 
-variable "owner" {
-  description = "Owner of the project"
-  type        = string
-  nullable    = false
+module "network" {
+  source = "./modules/network"
+
+  common_tags     = module.common.common_tags
+  cidr_vpc        = module.common.cidr_vpc
+  cidr_anywhere   = module.common.cidr_anywhere
+  cidr_public_one = module.common.cidr_public_one
+  cidr_public_two = module.common.cidr_public_two
+  az_subnet_public_one = "${var.aws_region}a"
+  az_subnet_public_two = "${var.aws_region}c"
 }
 
-variable "aws_profile" {
-  description = "AWS profile to use"
-  type        = string
-  nullable    = false
-}
+module "security" {
+  source = "./modules/security"
 
-variable "aws_region" {
-  description = "AWS region to use"
-  type        = string
-  nullable    = false
-}
-
-variable "environment" {
-  description = "Environment to deploy"
-  type        = string
-  nullable    = false
-  validation {
-    condition     = contains(["dev", "staging", "prod"], var.environment)
-    error_message = "Enviroment must be one of dev, staging, prod"
-  }
-}
-
-# outputs
-output "aws_region" {
-  value = var.aws_region
-}
-
-output "aws_ecr_url" {
-  value = local.aws_ecr_url
-}
-
-output "aws_ecr_repository_url" {
-  value = local.aws_ecr_repository_url
-}
-
-output "aws_profile" {
-  value = var.aws_profile
-}
-
-output "app_url" {
-  value = aws_lb.ecs_tf.dns_name
+  common_tags     = module.common.common_tags
+  resource_prefix = module.common.resource_prefix
+  cidr_anywhere   = module.common.cidr_anywhere
+  vpc_main_id     = module.network.vpc_main_id
 }

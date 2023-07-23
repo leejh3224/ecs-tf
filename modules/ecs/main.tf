@@ -1,14 +1,14 @@
 locals {
-  ecs_cluster_name        = "${local.resource_prefix}-ecs-cluster"
-  ecs_service_name        = "${local.resource_prefix}-ecs-service"
-  task_def_family_name    = "${local.resource_prefix}-task-def"
-  task_def_log_group_name = "${local.resource_prefix}-logs"
+  ecs_cluster_name        = "${var.resource_prefix}-ecs-cluster"
+  ecs_service_name        = "${var.resource_prefix}-ecs-service"
+  task_def_family_name    = "${var.resource_prefix}-task-def"
+  task_def_log_group_name = "${var.resource_prefix}-logs"
 }
 
 resource "aws_ecs_cluster" "ecs_tf" {
   name = local.ecs_cluster_name
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     "name" = local.ecs_cluster_name,
   })
 
@@ -25,17 +25,17 @@ resource "aws_ecs_service" "ecs_tf" {
   desired_count   = 1
   launch_type     = "FARGATE"
   load_balancer {
-    target_group_arn = aws_lb_target_group.ecs_tf.arn
-    container_name   = var.project
+    target_group_arn = var.alb_target_group_arn
+    container_name   = var.container_name
     container_port   = 80
   }
   network_configuration {
-    subnets          = data.aws_subnets.public.ids
-    security_groups  = [aws_security_group.ecs_tf_service.id]
+    subnets          = var.public_subnet_ids
+    security_groups  = [var.sg_ecs_service_id]
     assign_public_ip = true
   }
 
-  tags = merge(local.common_tags, {
+  tags = merge(var.common_tags, {
     "name" = local.ecs_service_name,
   })
 }
@@ -46,11 +46,11 @@ resource "aws_ecs_task_definition" "ecs_tf" {
   network_mode             = "awsvpc"
   cpu                      = 256
   memory                   = 512
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  execution_role_arn       = var.ecs_task_execution_role_arn
   container_definitions = jsonencode([
     {
-      "name" : var.project,
-      "image" : "${local.aws_ecr_repository_url}:latest",
+      "name" : var.container_name,
+      "image" : "${var.aws_ecr_repository_url}:latest",
       "portMappings" : [
         {
           "containerPort" : 80,
